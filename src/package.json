@@ -1,0 +1,7 @@
+{
+  "name": "legend-linux",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cliente nativo de Legend Online para Linux (Electron 11 + Flash PPAPI)",
+  "main": "main.js"
+}

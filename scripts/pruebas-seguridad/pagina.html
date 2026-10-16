@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><title>pruebas</title>
+<!-- Página "hostil": intenta todo lo que src/seguridad.js y src/preload.js deben impedir. -->
+<iframe id="fb" src="https://www.facebook.com/"></iframe>
+<iframe id="ad" src="https://example.com/"></iframe>
+<script>
+window.resultados = {};
+const r = (k, v) => { window.resultados[k] = v; };
+r('external', typeof (window.external && window.external.WINIE_LoginOK));
+navigator.geolocation.getCurrentPosition(() => r('ubicacion', 'concedida'), (e) => r('ubicacion', 'denegada:' + e.code));
+Notification.requestPermission().then((p) => r('notificaciones', p));
+navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+  .then(() => r('camara_microfono', 'concedido'), (e) => r('camara_microfono', 'denegado:' + e.name));
+navigator.clipboard.readText().then(() => r('portapapeles', 'leido'), (e) => r('portapapeles', 'denegado:' + e.name));
+const a = document.createElement('a');
+a.href = 'data:application/octet-stream;base64,ZWNobyBob2xhCg=='; a.download = 'malware.sh';
+document.body.appendChild(a); a.click();
+</script>
