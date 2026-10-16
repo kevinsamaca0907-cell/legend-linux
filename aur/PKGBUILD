@@ -1,0 +1,63 @@
+# Maintainer: Shirogura <263280181+kevinsamaca0907-cell@users.noreply.github.com>
+# Electron y Flash no se redistribuyen: se descargan de sus fuentes oficiales (como instalar.sh)
+# y se verifican con SHA-256. Pasos para publicar una versión nueva: aur/README.md.
+pkgname=legend-linux
+pkgver=0.1.0
+pkgrel=1
+_electron=11.5.0
+_flash=32.0.0.344
+pkgdesc='Cliente nativo no oficial de Legend Online (Electron 11 + Flash Player, aislado con bubblewrap)'
+arch=('x86_64')
+url='https://github.com/kevinsamaca0907-cell/legend-linux'
+license=('MIT' 'LicenseRef-Adobe-Flash-Player')
+depends=('alsa-lib' 'at-spi2-core' 'bash' 'bubblewrap' 'cairo' 'dbus' 'expat' 'gdk-pixbuf2' 'glib2'
+         'glibc' 'gtk3' 'hicolor-icon-theme' 'libcups' 'libdrm' 'libgcc' 'libstdc++' 'libx11' 'libxcb'
+         'libxcomposite' 'libxdamage' 'libxext' 'libxfixes' 'libxkbcommon' 'libxrandr' 'mesa' 'nspr'
+         'nss' 'pango' 'xdg-utils')
+optdepends=('libpulse: sonido con PulseAudio o PipeWire')
+options=('!strip' '!debug') # binarios precompilados de Electron y Adobe: no tocarlos
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+        "electron-v$_electron-linux-x64.zip::https://github.com/electron/electron/releases/download/v$_electron/electron-v$_electron-linux-x64.zip"
+        # Archivo oficial de Adobe (~406 MB) guardado en Wayback Machine: solo se extrae el plugin PPAPI.
+        "fp_${_flash}_archive.zip::https://web.archive.org/web/20200505195102id_/https://fpdownload.macromedia.com/pub/flashplayer/installers/archive/fp_${_flash}_archive.zip")
+noextract=("electron-v$_electron-linux-x64.zip" "fp_${_flash}_archive.zip")
+sha256sums=('SKIP'
+            '613ef8ac00c5abda425dfa48778a68f58a2e9c7c1f82539bb1a41afabbd6193f'
+            '076fc22746decc22a1b1e14460cd6ec8406f4885ca1d9f8bd5e76282ea540b6b')
+
+prepare() {
+  mkdir -p electron flash
+  bsdtar -xf "electron-v$_electron-linux-x64.zip" -C electron
+  bsdtar -xOf "fp_${_flash}_archive.zip" 32_0_r0_344/flashplayer32_0r0_344_linuxpep.x86_64.tar.gz |
+    bsdtar -xf - -C flash
+  echo "9fad2e23d872560d088494ce6cf9dd22c1badcf3ecb004553f69f8b607fbc07f  flash/libpepflashplayer.so" |
+    sha256sum -c -
+}
+
+package() {
+  local dest="$pkgdir/usr/lib/$pkgname"
+  cd "$pkgname-$pkgver"
+
+  # Misma estructura que el repositorio: run.sh y src/ buscan tools/ e iconos/ a su lado.
+  install -d "$dest/tools"
+  cp -r src "$dest/"
+  install -m755 run.sh "$dest/"
+  install -Dm755 scripts/probar-sandbox.sh "$dest/scripts/probar-sandbox.sh"
+  install -Dm644 iconos/ventana.png "$dest/iconos/ventana.png"
+  cp -a ../electron "$dest/tools/electron-v$_electron"
+  install -Dm644 ../flash/libpepflashplayer.so "$dest/tools/flash/libpepflashplayer.so"
+
+  # run.sh sigue el enlace hasta /usr/lib/legend-linux y guarda el perfil en ~/.local/share/legend-linux.
+  install -d "$pkgdir/usr/bin"
+  ln -s "/usr/lib/$pkgname/run.sh" "$pkgdir/usr/bin/$pkgname"
+
+  install -Dm644 aur/$pkgname.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"
+  for n in 16 24 32 48 64 128 256 512; do
+    install -Dm644 "iconos/$pkgname-$n.png" "$pkgdir/usr/share/icons/hicolor/${n}x$n/apps/$pkgname.png"
+  done
+
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 ../electron/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE.electron"
+  install -Dm644 ../flash/license.pdf "$pkgdir/usr/share/licenses/$pkgname/LICENSE.flash.pdf"
+}

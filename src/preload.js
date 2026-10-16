@@ -53,7 +53,8 @@ if (process.env.LO_DIAG) window.addEventListener('load', () => setTimeout(() => 
 // Calidad de Flash en game.jsp: el juego se inserta con quality=high (solo suaviza bitmaps
 // escalados en escenas estáticas); con el zoom conviene "best" (siempre suavizados).
 // Se cambia el <param> antes de que el plugin se instancie. LO_CALIDAD=high lo desactiva.
-const quality = process.env.LO_CALIDAD || 'best';
+// Modo ligero: "medium" (antialiasing menor, sin suavizar bitmaps), bastante menos CPU.
+const quality = process.env.LO_CALIDAD || (process.env.LO_LIGERO ? 'medium' : 'best');
 if (/^s\d+sqsa\.creaction-network\.com$/.test(location.hostname) && location.pathname.endsWith('/game.jsp')) {
   let reported = false;
   const fix = (obj) => {

@@ -77,6 +77,20 @@ Ubuntu 24.04+ además bloquea bubblewrap con AppArmor: arranca con `LO_NO_BWRAP=
 
 ## 🚀 Instalación
 
+### Arch Linux y derivadas (AUR)
+
+Si el paquete [`legend-linux`](aur/) está publicado en el AUR:
+
+```bash
+paru -S legend-linux   # o yay -S legend-linux
+```
+
+Se instala en `/usr/lib/legend-linux` con el comando `legend-linux`, el acceso directo en el menú (y su
+opción **Modo ligero**) y el perfil en `~/.local/share/legend-linux`. Descarga y verifica Electron y Flash
+igual que `instalar.sh`.
+
+### Cualquier distro (desde el código)
+
 ```bash
 git clone https://github.com/kevinsamaca0907-cell/legend-linux.git
 cd legend-linux
@@ -103,8 +117,9 @@ cd legend-linux
 
 1. Se abre la ventana de login: entra con tu usuario y contraseña (Facebook/Google aún no están soportados).
 2. El cliente te lleva a tu último servidor jugado.
-3. La sesión y los ajustes se guardan en `./perfil` (**no lo compartas**: contiene tu sesión).
-   Con "recordar contraseña" marcado, el usuario y la contraseña se guardan en `perfil/usuarios.json`
+3. La sesión y los ajustes se guardan en `./perfil` (instalado desde el AUR: `~/.local/share/legend-linux`;
+   **no lo compartas**: contiene tu sesión).
+   Con "recordar contraseña" marcado, el usuario y la contraseña se guardan en `usuarios.json` dentro del perfil
    (permisos 600, en base64: **no está cifrada**, igual que en la práctica el launcher oficial). Si no lo marcas, solo se guarda el usuario.
 4. El botón de cambiar de servidor abre otra ventana del cliente: puedes tener varios servidores abiertos a la vez.
 
@@ -125,12 +140,34 @@ Solo escribe en `~/.local/share` (sin sudo). Si mueves la carpeta del cliente, v
 | `Ctrl` `+` / `Ctrl` `-` | Zoom manual |
 | `Ctrl` `0` | Zoom automático (llenar la ventana) |
 
+### 🐢 PC básico: modo ligero
+
+Si el juego va lento o se traba (portátiles viejos, poca CPU):
+
+```bash
+./run.sh --ligero        # instalado desde el AUR: legend-linux --ligero
+```
+
+O desde el menú de aplicaciones: **clic derecho en Legend Online → Modo ligero (PC básico)**.
+
+- **Flash en calidad media** (`medium` en vez de `best`): menos antialiasing y sin suavizado de imágenes,
+  bastante menos CPU. Para el mínimo consumo: `LO_CALIDAD=low ./run.sh --ligero` (se ve más pixelado).
+- **No amplía el juego por encima de su tamaño real** (1495×930): Flash dibuja por CPU y cuantos más
+  píxeles, más trabajo. En pantallas grandes verás bordes negros; `Ctrl` `+` sigue funcionando.
+
+Siempre, en cualquier modo:
+
+- En pantallas pequeñas (1366×768) el juego se reduce para caber entero, sin barras de desplazamiento.
+- Sin corrector ortográfico (no descarga diccionarios ni los carga en memoria).
+- Cada ventana extra de servidor es otro proceso de Flash: en un PC básico, mejor una sola a la vez.
+
 ### ⚙️ Variables opcionales
 
 | Variable | Efecto |
 |---|---|
 | `LO_NO_BWRAP=1` | Arranca sin bubblewrap (menos seguro) |
-| `LO_CALIDAD=high` | Calidad de Flash original (por defecto `best`) |
+| `LO_CALIDAD=high` | Calidad de Flash: `low`, `medium`, `high` (la original) o `best` (por defecto; `medium` en modo ligero) |
+| `LO_PERFIL=/ruta` | Carpeta del perfil (sesión y ajustes) |
 | `LO_DEVTOOLS=1` | Abre las DevTools |
 | `LO_DIAG=1` | Registros de depuración (`.swf` cargados, tamaños del juego) |
 | `LO_FLASH_PATH=/ruta/libpepflashplayer.so` | Usa otro plugin de Flash |
@@ -206,6 +243,7 @@ SIN_SEGURIDAD=1 ./tools/electron-v11.5.0/electron scripts/pruebas-seguridad  # c
 | Se ve borroso o pequeño con escalado 125 % / 150 % en Wayland | KDE: *Pantalla → Escalado de aplicaciones X11 → que se escalen ellas mismas*, o ajusta con `Ctrl` `+`/`-` |
 | Barras negras a los lados | Es la relación de aspecto del juego (1495×895) frente a la de tu pantalla |
 | Las imágenes se ven algo suaves al ampliar | Son bitmaps a resolución nativa; `Ctrl` `-` para más nitidez y menos tamaño |
+| Va lento o se traba | [Modo ligero](#-pc-básico-modo-ligero) |
 | "Couldn't load plugin" | Arranca siempre con `./run.sh` (añade los parámetros que necesita Flash) |
 | No carga nada / no abre la ventana | `./run.sh --probar-sandbox`: la sección "Necesario para jugar" dice si falla el DNS o X11 |
 | Faltan bibliotecas | Instala los paquetes de tu distro de [Requisitos](#-requisitos) |
@@ -225,6 +263,7 @@ legend-linux/
 ├── empaquetar.sh     # paquete para tus otros equipos
 ├── instalar-escritorio.sh # acceso directo en el menú / escritorio
 ├── iconos/           # icono en varios tamaños (fuente.png = original)
+├── aur/              # PKGBUILD para el AUR (ver aur/README.md)
 └── scripts/
     ├── fetch_pages.py      # descarga las páginas del launcher para analizarlas
     ├── probar-sandbox.sh   # comprobaciones dentro de bubblewrap (./run.sh --probar-sandbox)

@@ -15,7 +15,7 @@ OUT="dist/legend-linux-$(date +%Y%m%d).tar.gz"
 tar -czf "$OUT" --transform 's,^,legend-linux/,' \
   --exclude='src/perfil' \
   --exclude='iconos/fuente*' \
-  README.md src run.sh instalar-escritorio.sh iconos scripts/probar-sandbox.sh tools/electron-v11.5.0 tools/flash
+  README.md LICENSE src run.sh instalar-escritorio.sh iconos scripts/probar-sandbox.sh tools/electron-v11.5.0 tools/flash
 
 echo "Paquete: $PWD/$OUT ($(du -h "$OUT" | cut -f1))"
 echo "En el otro equipo: tar -xzf $(basename "$OUT") && cd legend-linux && ./run.sh"

@@ -46,6 +46,11 @@ Icon=$NAME
 Terminal=false
 Categories=Game;
 StartupWMClass=$NAME
+Actions=ligero;
+
+[Desktop Action ligero]
+Name=Modo ligero (PC básico)
+Exec="$exec_path" --ligero
 DESKTOP
 chmod 755 "$APPS/$NAME.desktop"
 echo "Añadido al menú de aplicaciones: $APPS/$NAME.desktop"

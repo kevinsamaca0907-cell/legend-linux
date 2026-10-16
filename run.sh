@@ -1,13 +1,31 @@
 #!/usr/bin/env bash
 # Arranca el cliente dentro de bubblewrap.
 # Flash obliga a usar --no-sandbox en Electron 11 (ver src/main.js); bwrap compensa:
-# el proceso ve el sistema y el proyecto en solo lectura, solo puede escribir en perfil/ y nunca
+# el proceso ve el sistema y el proyecto en solo lectura, solo puede escribir en el perfil y nunca
 # ve el resto del home. Comprobación: ./run.sh --probar-sandbox
-# Variables: LO_FLASH_PATH (ruta al .so), LO_DEVTOOLS=1 (abre DevTools), LO_NO_BWRAP=1 (sin bwrap).
+# Opciones: --ligero (modo para PCs básicos, ver README).
+# Variables: LO_FLASH_PATH (ruta al .so), LO_DEVTOOLS=1 (abre DevTools), LO_NO_BWRAP=1 (sin bwrap),
+# LO_PERFIL (carpeta del perfil), LO_CALIDAD (calidad de Flash: low, medium, high, best).
 # Los avisos de Fontconfig (fontconfig de Electron 11 más viejo que la config del sistema) se filtran.
 set -euo pipefail
-cd "$(dirname "$0")"
+# readlink: instalado en el sistema, /usr/bin/legend-linux es un enlace a este archivo.
+cd "$(dirname "$(readlink -f "$0")")"
 PROJ="$PWD"
+
+# Perfil (sesión, usuarios recordados, ajustes): perfil/ si la carpeta del proyecto es escribible
+# (git clone o paquete .tar.gz); si está instalado en el sistema (AUR), ~/.local/share/legend-linux.
+if [[ -z "${LO_PERFIL:-}" ]]; then
+  if [[ -w "$PROJ" ]]; then LO_PERFIL="$PROJ/perfil"; else LO_PERFIL="${XDG_DATA_HOME:-$HOME/.local/share}/legend-linux"; fi
+fi
+export LO_PERFIL
+PERFIL="$LO_PERFIL"
+
+# --ligero: lo lee src/ (preload.js y main.js) como LO_LIGERO=1; no se pasa a Electron.
+app_args=()
+for a in "$@"; do
+  if [[ "$a" == --ligero ]]; then export LO_LIGERO=1; else app_args+=("$a"); fi
+done
+set -- "${app_args[@]}"
 ELECTRON="$PROJ/tools/electron-v11.5.0/electron"
 
 if [[ ! -x "$ELECTRON" || ! -f "$PROJ/tools/flash/libpepflashplayer.so" ]]; then
@@ -37,8 +55,8 @@ if ! command -v "${BWRAP:-bwrap}" >/dev/null; then
   exit 1
 fi
 
-mkdir -p "$PROJ/perfil/home"
-FIFO="$PROJ/perfil/abrir-url.fifo"
+install -d -m 700 "$PERFIL" "$PERFIL/home"
+FIFO="$PERFIL/abrir-url.fifo"
 
 RUN="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 args=(
@@ -55,10 +73,10 @@ args=(
   --ro-bind-try "$RUN/pipewire-0" "$RUN/pipewire-0"
   --ro-bind-try "$HOME/.local/share/fonts" "$HOME/.local/share/fonts"
   # Proyecto en solo lectura: si el Chromium viejo se viera comprometido no podría modificar
-  # run.sh, src/ ni tools/ (se ejecutarían fuera del sandbox la próxima vez). Solo perfil/ es escribible.
+  # run.sh, src/ ni tools/ (se ejecutarían fuera del sandbox la próxima vez). Solo el perfil es escribible.
   --ro-bind "$PROJ" "$PROJ"
-  --bind "$PROJ/perfil" "$PROJ/perfil"
-  --setenv HOME "$PROJ/perfil/home"
+  --bind "$PERFIL" "$PERFIL"
+  --setenv HOME "$PERFIL/home"
   --setenv LO_OPEN_FIFO "$FIFO"
   --unsetenv WAYLAND_DISPLAY
   --unshare-all --share-net
@@ -79,7 +97,7 @@ for d in /dev/nvidia*; do [[ -e "$d" ]] && args+=(--dev-bind "$d" "$d"); done
 
 # ./run.sh --probar-sandbox: comprueba desde dentro del sandbox qué se ve y qué se puede escribir.
 if [[ "${1:-}" == --probar-sandbox ]]; then
-  exec "${BWRAP:-bwrap}" "${args[@]}" --setenv REAL_HOME "$HOME" --setenv PROJ "$PROJ" \
+  exec "${BWRAP:-bwrap}" "${args[@]}" --setenv REAL_HOME "$HOME" --setenv PROJ "$PROJ" --setenv PERFIL "$PERFIL" \
     /usr/bin/bash "$PROJ/scripts/probar-sandbox.sh"
 fi
 

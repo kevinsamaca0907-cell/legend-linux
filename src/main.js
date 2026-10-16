@@ -17,8 +17,13 @@ app.commandLine.appendSwitch('ppapi-flash-version', cfg.flashVersion);
 // desactivar solo seccomp no basta. Compensación: run.sh encierra todo en bubblewrap.
 app.commandLine.appendSwitch('no-sandbox');
 
-// Perfil aislado dentro del proyecto (no mezclar con otros navegadores).
-app.setPath('userData', path.join(__dirname, '..', 'perfil'));
+// Perfil aislado (no mezclar con otros navegadores): el que elige run.sh (LO_PERFIL) o perfil/.
+app.setPath('userData', process.env.LO_PERFIL || path.join(__dirname, '..', 'perfil'));
+
+// LO_LIGERO=1 (./run.sh --ligero): modo para PCs básicos. Flash en calidad media (preload.js) y el
+// zoom automático no amplía el juego por encima de su tamaño real: Flash dibuja por CPU y su coste
+// crece con los píxeles de la ventana.
+const LIGERO = Boolean(process.env.LO_LIGERO);
 
 const PARTITION = 'persist:legend';
 // Icono de la ventana (barra de tareas, Alt+Tab): recorte de la pluma, legible a 24-48 px.
@@ -67,6 +72,7 @@ function createWindow(url, { partition = PARTITION, ...opts }) {
       plugins: true,
       // El juego vive en iframes: el preload (window.external + diagnóstico) debe correr en todos.
       nodeIntegrationInSubFrames: true,
+      spellcheck: false, // sin corrector: ahorra memoria y la descarga de diccionarios
     },
   });
   const wc = win.webContents;
@@ -162,6 +168,7 @@ function prepareSession(ses) {
   if (preparedSessions.has(ses)) return;
   preparedSessions.add(ses);
   harden(ses);
+  ses.setSpellCheckerLanguages([]); // con spellcheck: false Electron 11 aún descarga y carga en-US
   // UA de Chrome sin "Electron/x" por si la web filtra.
   ses.setUserAgent(ses.getUserAgent().replace(/\s*(Electron|legend-linux)\/\S+/g, ''));
   // Diagnóstico: qué .swf carga el juego (solo observa, no modifica nada).
@@ -176,6 +183,7 @@ function prepareSession(ses) {
 // game.jsp fija el <object> del juego en 1495x895 px CSS (+35 px de la barra de serverlist) y el resto
 // es fondo negro. Flash escala con el zoom de página (browserzoom=scale, comprobado en
 // scripts/flash-test/zoom-test.js), así que se amplía la página para llenar la ventana.
+// En pantallas pequeñas (1366x768) reduce por debajo de 1 para que el juego quepa sin barras de scroll.
 // Ctrl + '+'/'-': zoom manual; Ctrl+0: volver al ajuste automático.
 const GAME_AREA = { width: 1495, height: 895 + 35 };
 const settingsPath = () => path.join(app.getPath('userData'), 'ajustes.json');
@@ -191,7 +199,7 @@ function setupZoom(win) {
   const st = loadSettings();
   const fitZoom = () => {
     const [w, h] = win.getContentSize();
-    return Math.min(3, Math.max(1, Math.min(w / GAME_AREA.width, h / GAME_AREA.height)));
+    return Math.min(LIGERO ? 1 : 3, Math.max(0.5, Math.min(w / GAME_AREA.width, h / GAME_AREA.height)));
   };
   const apply = () => {
     if (win.isDestroyed()) return;
@@ -330,6 +338,7 @@ ipcMain.on('winie', (e, name, arg) => {
 });
 
 app.whenReady().then(() => {
+  if (LIGERO) console.log('[legend-linux] modo ligero');
   prepareSession(session.fromPartition(PARTITION));
   // Sin ignore-certificate-errors: los errores de certificado se respetan.
   // 609x364 es el área de contenido del navegador de login del launcher (sin marcos de ventana).

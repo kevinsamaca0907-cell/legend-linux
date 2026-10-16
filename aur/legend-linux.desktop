@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Legend Online
+Comment=Cliente nativo de Legend Online para Linux
+Exec=legend-linux
+Icon=legend-linux
+Terminal=false
+Categories=Game;
+StartupWMClass=legend-linux
+Actions=ligero;
+
+[Desktop Action ligero]
+Name=Modo ligero (PC básico)
+Exec=legend-linux --ligero
