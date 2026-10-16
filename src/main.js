@@ -17,8 +17,9 @@ app.commandLine.appendSwitch('ppapi-flash-version', cfg.flashVersion);
 // desactivar solo seccomp no basta. Compensación: run.sh encierra todo en bubblewrap.
 app.commandLine.appendSwitch('no-sandbox');
 
-// Perfil aislado (no mezclar con otros navegadores): el que elige run.sh (LO_PERFIL) o perfil/.
-app.setPath('userData', process.env.LO_PERFIL || path.join(__dirname, '..', 'perfil'));
+// Perfil aislado (no mezclar con otros navegadores), fuera del proyecto: el que elige run.sh (LO_PERFIL).
+app.setPath('userData', process.env.LO_PERFIL ||
+  path.join(process.env.XDG_DATA_HOME || path.join(require('os').homedir(), '.local', 'share'), 'legend-linux'));
 
 // LO_LIGERO=1 (./run.sh --ligero): modo para PCs básicos. Flash en calidad media (preload.js) y el
 // zoom automático no amplía el juego por encima de su tamaño real: Flash dibuja por CPU y su coste
@@ -242,7 +243,7 @@ async function prepareGameCookies(ses) {
 // --- Usuarios recordados (LoginUser.cs y WINIE_InitUserData del launcher) --------------
 // Lista con los campos en base64 tal como los manda la página: {type, username, pwd (solo con
 // "recordar" marcado), remember, automatic}; el más reciente primero. El launcher la cifraba con AES
-// y una clave fija en el .exe (es decir, sin protección real); aquí va en perfil/usuarios.json con
+// y una clave fija en el .exe (es decir, sin protección real); aquí va en usuarios.json (perfil) con
 // permisos 600, junto a las cookies de sesión, que ya dan acceso a la cuenta.
 const usersPath = () => path.join(app.getPath('userData'), 'usuarios.json');
 function loadUsers() {

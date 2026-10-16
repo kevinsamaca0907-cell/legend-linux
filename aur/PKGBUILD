@@ -47,7 +47,7 @@ package() {
   cp -a ../electron "$dest/tools/electron-v$_electron"
   install -Dm644 ../flash/libpepflashplayer.so "$dest/tools/flash/libpepflashplayer.so"
 
-  # run.sh sigue el enlace hasta /usr/lib/legend-linux y guarda el perfil en ~/.local/share/legend-linux.
+  # run.sh sigue el enlace hasta /usr/lib/legend-linux; el perfil va en ~/.local/share/legend-linux.
   install -d "$pkgdir/usr/bin"
   ln -s "/usr/lib/$pkgname/run.sh" "$pkgdir/usr/bin/$pkgname"
 

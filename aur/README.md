@@ -3,7 +3,7 @@
 `PKGBUILD` y `.SRCINFO` del paquete [`legend-linux`](https://aur.archlinux.org/packages/legend-linux).
 Instala el cliente en `/usr/lib/legend-linux` con la misma estructura que el repositorio, el comando
 `legend-linux` (enlace a `run.sh`), el `.desktop` de esta carpeta (con la acción **Modo ligero**) y los iconos.
-Como la carpeta del sistema no es escribible, `run.sh` guarda el perfil en `~/.local/share/legend-linux`.
+`run.sh` guarda el perfil en `~/.local/share/legend-linux` (igual que desde el código).
 
 Electron 11.5.0 y Flash 32.0.0.344 no se redistribuyen: el PKGBUILD los descarga de las mismas fuentes que
 `instalar.sh` y los verifica con SHA-256.

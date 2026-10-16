@@ -12,12 +12,9 @@ set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 PROJ="$PWD"
 
-# Perfil (sesión, usuarios recordados, ajustes): perfil/ si la carpeta del proyecto es escribible
-# (git clone o paquete .tar.gz); si está instalado en el sistema (AUR), ~/.local/share/legend-linux.
-if [[ -z "${LO_PERFIL:-}" ]]; then
-  if [[ -w "$PROJ" ]]; then LO_PERFIL="$PROJ/perfil"; else LO_PERFIL="${XDG_DATA_HOME:-$HOME/.local/share}/legend-linux"; fi
-fi
-export LO_PERFIL
+# Perfil (sesión, usuarios recordados, ajustes): siempre fuera del proyecto, en ~/.local/share/legend-linux,
+# para que la sesión no acabe nunca junto al código (git, paquetes .tar.gz) y sirva igual instalado desde el AUR.
+export LO_PERFIL="${LO_PERFIL:-${XDG_DATA_HOME:-$HOME/.local/share}/legend-linux}"
 PERFIL="$LO_PERFIL"
 
 # --ligero: lo lee src/ (preload.js y main.js) como LO_LIGERO=1; no se pasa a Electron.

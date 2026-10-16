@@ -117,8 +117,9 @@ cd legend-linux
 
 1. Se abre la ventana de login: entra con tu usuario y contraseña (Facebook/Google aún no están soportados).
 2. El cliente te lleva a tu último servidor jugado.
-3. La sesión y los ajustes se guardan en `./perfil` (instalado desde el AUR: `~/.local/share/legend-linux`;
-   **no lo compartas**: contiene tu sesión).
+3. La sesión y los ajustes se guardan en `~/.local/share/legend-linux`, **fuera de la carpeta del proyecto**
+   (así nunca acaban en git ni en un paquete; **no compartas esa carpeta**: contiene tu sesión).
+   Para borrar tus datos: `rm -rf ~/.local/share/legend-linux`.
    Con "recordar contraseña" marcado, el usuario y la contraseña se guardan en `usuarios.json` dentro del perfil
    (permisos 600, en base64: **no está cifrada**, igual que en la práctica el launcher oficial). Si no lo marcas, solo se guarda el usuario.
 4. El botón de cambiar de servidor abre otra ventana del cliente: puedes tener varios servidores abiertos a la vez.
@@ -209,7 +210,7 @@ en ellos haga el menor daño posible:
 | Medida | Qué evita |
 |---|---|
 | Todo corre dentro de **bubblewrap** | No ve tu carpeta personal (`~/.ssh`, `~/.config`, navegadores...), ni D-Bus, ni el socket de Wayland, ni otros procesos |
-| Proyecto en **solo lectura** (solo `perfil/` es escribible) | Que un proceso comprometido modifique `run.sh` o `src/` para ejecutarse fuera del sandbox la próxima vez |
+| Proyecto en **solo lectura** (solo el perfil es escribible) | Que un proceso comprometido modifique `run.sh` o `src/` para ejecutarse fuera del sandbox la próxima vez |
 | **Permisos web denegados** (solo se permite pantalla completa) | Que una página use cámara, micrófono, ubicación, notificaciones o **lea tu portapapeles** (Electron los concede por defecto) |
 | **iframes de terceros bloqueados** (widget de Facebook, rastreadores) | Código ajeno ejecutándose dentro del navegador sin parches |
 | `window.external` **solo en los dominios del juego** | Que un iframe ajeno llame a las funciones del launcher |
