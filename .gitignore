@@ -5,3 +5,6 @@ analisis/web/
 dist/
 PENDIENTES.txt
 iconos/fuente-escudo.jpg
+# Notas locales para el asistente: rutas del equipo, uid del juego, historial
+CLAUDE.MD
+contexto para claude.md

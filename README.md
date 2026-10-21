@@ -140,6 +140,7 @@ Solo escribe en `~/.local/share` (sin sudo). Si mueves la carpeta del cliente, v
 |---|---|
 | `Ctrl` `+` / `Ctrl` `-` | Zoom manual |
 | `Ctrl` `0` | Zoom automático (llenar la ventana) |
+| `F5` | Recargar el juego sin cerrar sesión (útil si tras mucho rato las animaciones van más lentas, p. ej. antes del boss rush) |
 
 ### 🐢 PC básico: modo ligero
 
@@ -174,6 +175,15 @@ Siempre, en cualquier modo:
 | `LO_FLASH_PATH=/ruta/libpepflashplayer.so` | Usa otro plugin de Flash |
 
 Ejemplo: `LO_CALIDAD=high ./run.sh`
+
+### 📝 Registro
+
+Cada sesión se guarda en `~/.local/share/legend-linux/legend.log` (la anterior en `legend.log.1`), también
+abriéndolo desde el menú. Incluye cada minuto la CPU y la memoria de Flash (`[rendimiento]`). No contiene
+tokens, usuarios ni claves de sesión: puedes adjuntarlo en un *issue*.
+
+Si la red tarda al encender el PC, si Cloudflare bloquea la primera visita ("Sorry, you have been blocked") o si el
+juego se queda cargando, el cliente reintenta solo (hasta 3 veces).
 
 ### 🌍 Otros idiomas / servidores
 
@@ -212,7 +222,7 @@ en ellos haga el menor daño posible:
 | Todo corre dentro de **bubblewrap** | No ve tu carpeta personal (`~/.ssh`, `~/.config`, navegadores...), ni D-Bus, ni el socket de Wayland, ni otros procesos |
 | Proyecto en **solo lectura** (solo el perfil es escribible) | Que un proceso comprometido modifique `run.sh` o `src/` para ejecutarse fuera del sandbox la próxima vez |
 | **Permisos web denegados** (solo se permite pantalla completa) | Que una página use cámara, micrófono, ubicación, notificaciones o **lea tu portapapeles** (Electron los concede por defecto) |
-| **iframes de terceros bloqueados** (widget de Facebook, rastreadores) | Código ajeno ejecutándose dentro del navegador sin parches |
+| **iframes de terceros bloqueados** (widget de Facebook, rastreadores; solo se permite la verificación de Cloudflare) | Código ajeno ejecutándose dentro del navegador sin parches |
 | `window.external` **solo en los dominios del juego** | Que un iframe ajeno llame a las funciones del launcher |
 | **Descargas bloqueadas** | Que una página te deje archivos |
 | Navegación solo a `*.creaction-network.com` y `*.oasgames.com` | Enlaces y popups ajenos se abren en tu navegador normal (como mucho uno por segundo); los popups del juego (p. ej. cambiar de servidor) abren otra ventana del cliente (sesión en memoria propia con las cookies del juego copiadas), máximo 8 |
@@ -245,6 +255,8 @@ SIN_SEGURIDAD=1 ./tools/electron-v11.5.0/electron scripts/pruebas-seguridad  # c
 | Barras negras a los lados | Es la relación de aspecto del juego (1495×895) frente a la de tu pantalla |
 | Las imágenes se ven algo suaves al ampliar | Son bitmaps a resolución nativa; `Ctrl` `-` para más nitidez y menos tamaño |
 | Va lento o se traba | [Modo ligero](#-pc-básico-modo-ligero) |
+| Tras un rato largo las animaciones van más lentas | `F5` recarga el juego; las líneas `[rendimiento]` del [registro](#-registro) muestran si la memoria de Flash crece |
+| "Sorry, you have been blocked" / se queda cargando | Lo bloquea Cloudflare a veces en la primera visita; el cliente reintenta solo. Si persiste, ciérralo y ábrelo de nuevo |
 | "Couldn't load plugin" | Arranca siempre con `./run.sh` (añade los parámetros que necesita Flash) |
 | No carga nada / no abre la ventana | `./run.sh --probar-sandbox`: la sección "Necesario para jugar" dice si falla el DNS o X11 |
 | Faltan bibliotecas | Instala los paquetes de tu distro de [Requisitos](#-requisitos) |

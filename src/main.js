@@ -96,8 +96,51 @@ function createWindow(url, { partition = PARTITION, ...opts }) {
   wc.on('will-prevent-unload', (e) => e.preventDefault());
   wc.on('plugin-crashed', (e, name, ver) => console.log('[plugin-crashed]', name, ver));
   if (process.env.LO_DEVTOOLS) wc.openDevTools({ mode: 'detach' });
+  setupRetry(win);
   win.loadURL(url);
   return win;
+}
+
+// Reintentos automáticos. Al encender el PC la red puede no estar lista, y Cloudflare a veces bloquea
+// la primera visita ("Sorry, you have been blocked", título "Attention Required!") hasta que su script
+// de detección deja sus cookies; también bloquea a veces la petición de la lista de servidores
+// (odp3.oasgames.com) y entonces game.php se queda cargando para siempre (oas.game.js no reintenta).
+// Antes la solución era cerrar y volver a abrir el cliente.
+const RETRY_DELAYS = [3000, 8000, 20000];
+const CF_BLOCK = /Attention Required|Access denied/i; // "Just a moment..." se resuelve solo: no se toca
+const GAME_PHP_TIMEOUT = 30000;
+const isGamePhp = (u) => { try { return new URL(u).pathname.endsWith('/template/game.php'); } catch (e) { return false; } };
+function setupRetry(win) {
+  const wc = win.webContents;
+  let tries = 0;
+  let stuck = null;
+  let failed = false; // la página de error de Chromium también emite did-finish-load: no cuenta como éxito
+  const retry = (why, url) => {
+    if (win.isDestroyed()) return;
+    if (tries >= RETRY_DELAYS.length) return log(`${why}; sin más reintentos (cierra y vuelve a abrir)`);
+    const delay = RETRY_DELAYS[tries++];
+    log(`${why}; reintento ${tries} en ${delay / 1000} s`);
+    setTimeout(() => !win.isDestroyed() && (url ? wc.loadURL(url) : wc.reload()), delay);
+  };
+  // -3 = ERR_ABORTED (navegación cancelada por otra): no es un fallo.
+  wc.on('did-fail-load', (e, code, desc, u, isMainFrame) => {
+    if (!isMainFrame || code === -3) return;
+    failed = true;
+    retry(`error de carga ${code} ${desc}`, u);
+  });
+  wc.on('did-finish-load', () => {
+    clearTimeout(stuck);
+    if (failed) { failed = false; return; }
+    const url = wc.getURL();
+    wc.executeJavaScript('document.title').then((title) => {
+      if (CF_BLOCK.test(title)) return retry(`bloqueo de Cloudflare ("${title}") en ${redact(url)}`);
+      if (!isGamePhp(url)) { tries = 0; return; }
+      stuck = setTimeout(() => {
+        if (!win.isDestroyed() && isGamePhp(wc.getURL())) retry(`el juego no pasó de game.php en ${GAME_PHP_TIMEOUT / 1000} s`);
+      }, GAME_PHP_TIMEOUT);
+    }).catch(() => {});
+  });
+  win.on('closed', () => clearTimeout(stuck));
 }
 
 // Popups (target=_blank, window.open). Como FormBrowersLifeSpanHandler del launcher, que los abre
@@ -145,6 +188,7 @@ async function openGameWindow(url, fromSession) {
   win.on('closed', () => { gameWindows.delete(win); if (slot) freeSlots.push(slot); });
   win.maximize();
   setupZoom(win);
+  setupReload(win);
   return win;
 }
 
@@ -233,6 +277,56 @@ function setupZoom(win) {
   apply();
 }
 
+// F5: recarga la ventana del juego (Flash empieza de cero con la sesión ya iniciada, unos segundos).
+// El juego se nota más lento tras un rato largo (memoria de Flash que crece, ver startPerfLog): útil
+// antes de un evento pesado como el boss rush.
+function setupReload(win) {
+  win.webContents.on('before-input-event', (e, input) => {
+    if (input.type !== 'keyDown' || input.key !== 'F5' || input.control || input.alt || input.meta) return;
+    e.preventDefault();
+    log('recarga manual (F5)');
+    win.webContents.reload();
+  });
+}
+
+// --- Rendimiento -----------------------------------------------------------------------
+// Cada minuto escribe en el log la CPU (% de un núcleo) y la memoria de Flash, de las páginas y de la
+// GPU. Sirve para ver si la lentitud tras ~20 min es memoria que crece o CPU al límite.
+// Se lee /proc porque getAppMetrics() de Electron 11 da 0 % de CPU salvo para el plugin.
+const PERF_INTERVAL = 60000;
+const PERF_TYPES = { 'Pepper Plugin': 'flash', Tab: 'páginas', GPU: 'gpu' };
+function readProc(pid) {
+  try {
+    const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8').split(') ')[1].split(' ');
+    const rss = /VmRSS:\s+(\d+)/.exec(fs.readFileSync(`/proc/${pid}/status`, 'utf8'));
+    return { ticks: Number(stat[11]) + Number(stat[12]), rssKb: rss ? Number(rss[1]) : 0 };
+  } catch (e) {
+    return null;
+  }
+}
+function startPerfLog() {
+  const start = Date.now();
+  let prev = new Map(); // pid -> ticks
+  setInterval(() => {
+    const now = new Map();
+    const sum = {};
+    for (const p of app.getAppMetrics()) {
+      const name = PERF_TYPES[p.type];
+      const r = name && readProc(p.pid);
+      if (!r) continue;
+      now.set(p.pid, r.ticks);
+      const s = (sum[name] = sum[name] || { cpu: 0, mb: 0 });
+      // Ticks de 10 ms (CLK_TCK = 100): ticks / segundos = % de un núcleo.
+      if (prev.has(p.pid)) s.cpu += (r.ticks - prev.get(p.pid)) / (PERF_INTERVAL / 1000);
+      s.mb += r.rssKb / 1024;
+    }
+    prev = now;
+    const parts = Object.entries(sum).map(([n, s]) => `${n} ${s.cpu.toFixed(0)}% ${s.mb.toFixed(0)} MB`);
+    console.log('[rendimiento]', `${Math.round((Date.now() - start) / 60000)} min |`, parts.join(' | '),
+      `| ventanas ${gameWindows.size}`);
+  }, PERF_INTERVAL).unref();
+}
+
 // --- Cookies (CookieOpration.cs): logintype=4 y new_gamebox=1 en el dominio del juego ------
 async function prepareGameCookies(ses) {
   for (const [name, value] of [['logintype', '4'], ['new_gamebox', '1']]) {
@@ -317,6 +411,7 @@ const gameBridge = {
     respond(wc, d.callback, JSON.stringify({ data }));
   },
   WINIE_OpenWithSystemBrowser(wc, url) {
+    log('la página pide el navegador del sistema:', redact(url));
     openExternal(url, wc);
   },
   // El launcher solo los escribe en consola.
@@ -341,6 +436,7 @@ ipcMain.on('winie', (e, name, arg) => {
 app.whenReady().then(() => {
   if (LIGERO) console.log('[legend-linux] modo ligero');
   prepareSession(session.fromPartition(PARTITION));
+  startPerfLog();
   // Sin ignore-certificate-errors: los errores de certificado se respetan.
   // 609x364 es el área de contenido del navegador de login del launcher (sin marcos de ventana).
   loginWin = createWindow(cfg.loginUrl(), { width: 609, height: 364, useContentSize: true, resizable: false });

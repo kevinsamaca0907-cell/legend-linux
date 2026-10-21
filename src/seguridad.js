@@ -7,6 +7,10 @@ const cfg = require('./config');
 // El juego solo necesita pantalla completa.
 const ALLOWED_PERMISSIONS = new Set(['fullscreen']);
 
+// Única excepción al bloqueo de iframes de terceros: la verificación de Cloudflare (Turnstile).
+// Cuando Cloudflare decide comprobar que no eres un bot, sin su iframe la página se queda en blanco.
+const ALLOWED_FRAME_HOSTS = new Set(['challenges.cloudflare.com']);
+
 function isAllowedUrl(url) {
   try {
     const u = new URL(url);
@@ -41,7 +45,7 @@ function harden(ses, log = (...a) => console.log('[seguridad]', ...a)) {
   const seen = new Set();
   ses.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (d, callback) => {
     if (/^(devtools|chrome|data|blob|file):/.test(d.url) || isAllowedUrl(d.url)) return callback({});
-    if (d.resourceType === 'subFrame') {
+    if (d.resourceType === 'subFrame' && !ALLOWED_FRAME_HOSTS.has(hostOf(d.url))) {
       log('iframe de terceros bloqueado:', hostOf(d.url));
       return callback({ cancel: true });
     }

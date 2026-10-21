@@ -7,6 +7,7 @@
 # Variables: LO_FLASH_PATH (ruta al .so), LO_DEVTOOLS=1 (abre DevTools), LO_NO_BWRAP=1 (sin bwrap),
 # LO_PERFIL (carpeta del perfil), LO_CALIDAD (calidad de Flash: low, medium, high, best).
 # Los avisos de Fontconfig (fontconfig de Electron 11 más viejo que la config del sistema) se filtran.
+# Registro de la última sesión: $LO_PERFIL/legend.log (la anterior en legend.log.1).
 set -euo pipefail
 # readlink: instalado en el sistema, /usr/bin/legend-linux es un enlace a este archivo.
 cd "$(dirname "$(readlink -f "$0")")"
@@ -42,8 +43,25 @@ if [[ -n "$missing" ]]; then
   exit 1
 fi
 
+install -d -m 700 "$PERFIL" "$PERFIL/home"
+
+# Registro de la última sesión (y la anterior en legend.log.1): abierto desde el menú no hay terminal
+# y los fallos intermitentes (red al encender el PC, bloqueos de Cloudflare) no dejaban rastro.
+# Los logs ya ocultan token, usuario y clave (redact() en src/main.js).
+LOG="$PERFIL/legend.log"
+[[ -f "$LOG" ]] && mv -f "$LOG" "$LOG.1"
+exec > >(tee "$LOG") 2> >(grep --line-buffered -v '^Fontconfig' | tee -a "$LOG" >&2)
+echo "[legend-linux] inicio $(date -Is)"
+
+# Al encender el PC la red puede tardar unos segundos: sin DNS el login salía en blanco.
+for i in {1..30}; do
+  getent hosts gamebox3.creaction-network.com >/dev/null && break
+  ((i == 1)) && echo "[legend-linux] esperando a la red..."
+  sleep 1
+done
+
 if [[ -n "${LO_NO_BWRAP:-}" ]]; then
-  exec "$ELECTRON" "$PROJ/src" "$@" 2> >(grep -v '^Fontconfig' >&2)
+  exec "$ELECTRON" "$PROJ/src" "$@"
 fi
 
 if ! command -v "${BWRAP:-bwrap}" >/dev/null; then
@@ -52,7 +70,6 @@ if ! command -v "${BWRAP:-bwrap}" >/dev/null; then
   exit 1
 fi
 
-install -d -m 700 "$PERFIL" "$PERFIL/home"
 FIFO="$PERFIL/abrir-url.fifo"
 
 RUN="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
@@ -113,4 +130,4 @@ OPENER=$!
 trap 'kill "$OPENER" 2>/dev/null; rm -f "$FIFO"' EXIT
 trap 'exit 130' INT TERM HUP # cerrar la terminal o Ctrl+C también limpia
 
-"${BWRAP:-bwrap}" "${args[@]}" "$ELECTRON" "$PROJ/src" "$@" 2> >(grep -v '^Fontconfig' >&2)
+"${BWRAP:-bwrap}" "${args[@]}" "$ELECTRON" "$PROJ/src" "$@"
